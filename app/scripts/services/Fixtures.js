@@ -32,9 +32,12 @@
           };
         Fixtures.getAlbum = function() {
         return albumPicasso;
-     };
+        };
+        Fixtures.getCollection = function(numberOfAlbums) {
+         return albumPicasso;
+        };
          return Fixtures;
-     }
+        }
 
      angular
          .module('blocJams')
