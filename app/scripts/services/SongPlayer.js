@@ -27,7 +27,7 @@
 * @type {Object}
 */
              SongPlayer.currentSong = null;
-
+             
              /**
               * @desc Current playback time (in seconds) of currently playing song
               * @type {Number}
@@ -130,7 +130,7 @@ SongPlayer.setCurrentTime = function(time) {
     }
 };
 
-          return SongPlayer;
+        return SongPlayer;
 }
 
      angular
