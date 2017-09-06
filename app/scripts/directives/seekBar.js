@@ -21,7 +21,7 @@
            scope.max = 100;
 
            var seekBar = $(element);
-           SongPlayer.volume = SongPlayer.setVolume();
+
 
            attributes.$observe('value', function(newValue) {
              scope.value = newValue;
@@ -42,9 +42,9 @@
                return {width: percentString()};
            };
 
-        //    scope.thumbStyle = function() {
-        //      return {width: percentString()};
-        //  };
+           scope.thumbStyle = function() {
+             return {left: percentString()};
+         };
 
         var notifyOnChange = function(newValue) {
           if (typeof scope.onChange === 'function') {
@@ -65,16 +65,6 @@
                 notifyOnChange(scope.value);
               });
           });
-
-          scope.SongPlayer.setVolume = function() {
-              var percent = calculatePercent(seekBar, event);
-              scope.$apply(function(){
-                scope.value = percent*scope.max;
-                notifyOnChange(scope.value);
-              });
-          });
-
-
 
           $document.bind('mouseup.thumb', function() {
             $document.unbind('mousemove.thumb');
