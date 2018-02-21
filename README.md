@@ -105,3 +105,87 @@ To reference any other assets, like the music in Bloc Jams, use the path `assets
 ### Difference between Pages and Templates
 
 The `templates` directory should hold any HTML files used as templates in Angular states configured by UI Router. All other HTML files belong in the `pages` directory.
+
+## Bloc-Jams-Angular
+## Description
+In this project you'll rework Bloc Jams to use the Angular JavaScript framework.
+
+### Install NodeJS
+
+Setup the Application
+On GitHub, fork the Bloc Jams AngularJS Starter. Forking a project makes a copy and adds it to your own GitHub account. This is an important step, because your work will need be on your GitHub account and not Bloc's.
+
+Rename your forked repository to bloc-jams-angularjs in GitHub (available under the Settings tab of your repository).
+
+Open your terminal, cd into your ~/bloc directory, and clone your repository.
+```
+$ cd ~/bloc
+$ git clone https://github.com/{username}/bloc-jams-angularjs.git
+```
+Make sure to replace {username} with your GitHub username.
+
+Change into the directory: $ cd bloc-jams-angularjs.
+Run $ npm install to download/install the needed dependencies
+Start the node server: npm start.
+Open a web browser, go to http://localhost:3000, and verify that you see the Bloc Jams landing page.
+You can press ctrl + c at any time to stop the server.
+
+You'll want to keep the server running whenever you're working on your project.
+
+Include Angular
+Follow the steps below to initialize an Angular application.
+
+1. Reference the Angular Script File
+Include Angular the same way we include a library like jQuery, by adding a script source to the HTML document. Add a link to the Angular source in index.html and make sure that the link is above your other script tags:
+
+app/index.html
+```
+ ...
+     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+     <script src="scripts/app.js"></script>
+ </body>
+ ...
+ ```
+### Declare an Angular Module
+The root Angular module will act as a container for different parts of our application. In app.js, define a module with angular.module:
+
+app/scripts/app.js
+angular.module('blocJams', []);
+The first argument passed, blocJams, is the prescribed name of the module. The empty array, passed as the second argument, injects dependencies into an application. For now, there are no dependencies to inject, but we'll cover dependency injection in the next checkpoint.
+
+### Bootstrap the Application
+To link the blocJams module to the application, Angular needs to know the root element of the application, which is typically the <html> or <body> element. In  index.html, link the root module to the <html> tag:
+
+app/index.html
+```
+ ...
+ <!DOCTYPE html>
+ <html>
+ <html ng-app="blocJams">
+ <head lang="en">
+ ...
+ ```
+At this point, we've wired Angular to the application. The next steps are to configure the module and create a controller, which we'll cover in the following checkpoints.
+
+Check your work
+To ensure that Angular is up and running, add a simple Javascript expression inside double curly brackets {{ }}to your index.html file.
+
+app/index.html
+```
+<!DOCTYPE html>
+<html>
+  ...
+  <body>
+    {{ 2 + 2 }}
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+  </body>
+</html>
+```
+Then switch to your terminal. Start the server with: $ npm start. Open a new web browser window and navigate to: http://localhost:3000. You should see the expression evaluated on the webpage. So assuming you did 2 + 2 inside double curly brackets, you would see a white webpage with just the number 4 on it.
+
+Once you have verified that Angular is up and running on your app, you can remove the {{ 2 + 2 }} from index.html
+
+Git
+Commit your work in Git. 
+
+
