@@ -1438,8 +1438,6 @@ Inject the Fixtures service into the SongPlayer service. Then use the getAlbum m
      var currentAlbum = Fixtures.getAlbum();
  ...
  ```
-Remember to write documentation for this private attribute.
-
 Remember to include the Fixtures factory at the bottom of the file as well:
 
 ~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
@@ -1538,3 +1536,307 @@ To trigger the previous method, add an ngClick directive to the previous button 
  ...
  ```
 Test the previous button in the view and revel in another victory.
+
+### DIRECTIVE
+Any Angular element in the HTML is a directive. A directive binds Angular functionality to HTML on a page. We've already used several of Angular's built-in directives to refactor Bloc Jams:
+
+#### Directive	Description
+1. ngApp	Designates the root element of the application
+1. ngController	Attaches a controller to the view
+1. ngRepeat	Instantiates a template once per item from a collection
+1. ngClick	Allows us to specify custom behavior when an element is clicked
+1. ngShow	Shows or hides the given HTML element based on the expression provided to the attribute
+We've also used some of UI-Router's built-in directives:
+
+#### Directive	Description
+1. ui-view	Tells $state where to place templates
+1. ui-sref	Binds an <a> tag to a state
+The ng prefix on directives is a naming convention reserved for the Angular core library. UI-Router, which is not part of the Angular core library, prefixes its directives with ui. When naming your own directives, you should choose a custom prefix. This will avoid potential bugs and naming conflicts that may occur with future releases of Angular.
+
+When we declare ng-controller="SomeCtrl", we're using the ngController directive to run certain Angular functionality. In this case, ngController searches for a controller named "SomeCtrl" and executes its code. Angular executes the code within the scope of the element attached to ng-controller.
+
+In this example, as with every directive we have seen so far, we invoke directives as attributes in the HTML. When Angular compiles an application's HTML, however, it can match directives based on more than just attributes. It can also match directives on class names, element names, and even comments.
+
+Create a new Git feature branch for this.
+
+### Create a Custom Directive
+Like controllers and services, directives are registered on modules. We'll create a directive to handle the seek bars for Bloc Jams.
+
+Within the scripts directory, create a directives directory. Within the directives directory, create a file named seekBar.js and register a seekBar directive:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ (function() {
+     function seekBar() {
+     }
+ 
+     angular
+         .module('blocJams')
+         .directive('seekBar', seekBar);
+ })();
+ ```
+For directives, the callback function (in this case, seekBar) is a factory function. It returns an object that describes the directive's behavior to Angular's HTML compiler. This object communicates the behavior through options. Add the following to the directive:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ function seekBar() {
+     return {
+         templateUrl: '/templates/directives/seek_bar.html',
+         replace: true,
+         restrict: 'E'
+     };
+ }
+ ...
+ ```
+We return three options: templateUrl, replace, and restrict.
+
+We've named the directive seekBar, which means Angular will look for seek-bar in the HTML and call this directive when it finds that markup.
+
+restrict: 'E' instructs Angular to treat this directive as an element. For example, Angular will run the code if it finds <seek-bar> in the HTML, but not if it finds  <div seek-bar>.
+
+replace: true instructs Angular to completely replace the <seek-bar> element with the directive's HTML template rather than insert the HTML between the  <seek-bar></seek-bar> tags.
+
+The templateUrl option specifies the path to the HTML template that the directive will use. We've added a template URL, but we haven't yet made the template. Let's do that now.
+
+#### Create a Directive Template
+In the templates directory, create a directives directory to distinguish primary application templates from directive templates. Within the directives directory, create a file named seek_bar.html.
+
+Find the seek bar element in player_bar.html and paste it into the newly created  seek_bar.html file:
+
+~/bloc/bloc-jams-angular/app/templates/directives/seek_bar.html
+```
+ <div class="seek-bar">
+     <div class="fill"></div>
+     <div class="thumb"></div>
+ </div>
+ ```
+In player_bar.html, find both instances of the seek bar element and replace them with our custom seekBar directive:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <div class="seek-bar">
+     <div class="fill"></div>
+     <div class="thumb"></div>
+ </div>
+ <seek-bar></seek-bar>
+ ...
+ ```
+When Angular traverses the HTML, it replaces the <seek-bar> element with its corresponding directive definition, which includes both the HTML template and any functionality associated with it.
+
+To display the directive template in the view, add the seekBar.js source to  index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/controllers/PlayerBarCtrl.js"></script>
+ <script src="/scripts/directives/seekBar.js"></script>
+ ...
+ ```
+The seek bars should now display in the view.
+
+Link Directive Logic to the DOM
+We'll add two more options to the directive:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ function seekBar() {
+     return {
+         templateUrl: '/templates/directives/seek_bar.html',
+         replace: true,
+         restrict: 'E'
+         restrict: 'E',
+         scope: { },
+         link: function(scope, element, attributes) {
+             // directive logic to return
+         }
+     };
+ }
+ ...
+ ```
+We've added scope and link options:
+
+For the Bloc Jams project, we will use more jQuery methods than are available through jqLite, so we'll need to add the jQuery library to index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+ <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+ ...
+ ```
+Add Logic to the seekBar Directive
+The seek bar will need to:
+
+Keep track of its current value.
+Have a maximum value.
+Calculate the ratio between the current value and max value and convert it into a percent string.
+Update the DOM element with an appropriate value so that it is visible to the user.
+Let's rewrite this logic in the link function:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ function seekBar() {
+     return {
+         templateUrl: '/templates/directives/seek_bar.html',
+         replace: true,
+         restrict: 'E',
+         scope: { },
+         link: function(scope, element, attributes) {
+             scope.value = 0;
+             scope.max = 100;
+ 
+             var percentString = function () {
+                 var value = scope.value;
+                 var max = scope.max;
+                 var percent = value / max * 100;
+                 return percent + "%";
+             };
+ 
+             scope.fillStyle = function() {
+                 return {width: percentString()};
+             };
+         }
+     };
+ }
+ ...
+ ```
+seekBar's HTML template can access the attributes and methods of the directive's  scope object – in this case: scope.value, scope.max, and scope.fillStyle.
+
+#### Attribute / Method	Description
+1. scope.value	Holds the value of the seek bar, such as the currently playing song time or the current volume. Default value is 0.
+scope.max	Holds the maximum value of the song and volume seek bars. Default value is 100.
+1. percentString()	A function that calculates a percent based on the value and maximum value of a seek bar.
+1. scope.fillStyle()	Returns the width of the seek bar fill element based on the calculated percent.
+1. Eventually we'll add scope.value and scope.max to the view, but for now we'll just add scope.fillStyle() using the ngStyle directive, which allows us to set CSS styles on an HTML element conditionally:
+
+~/bloc/bloc-jams-angular/app/templates/directives/seek_bar.html
+```
+ <div class="seek-bar">
+     <div class="fill"></div>
+     <div class="fill" ng-style="fillStyle()"></div>
+     <div class="thumb"></div>
+ </div>
+ ```
+Note that scope does not precede the method name in the view (e.g.  scope.fillStyle()). The directive knows which attributes and methods are on its  scope and can be used in the view. We could not, for instance, call percentString() in the view because it is not on the directive's scope object.
+
+Update the Seek Bar from a Click Event
+Now that we can calculate the seek bar's value, we'll add the first of two functions. This first function will be called when a user clicks on the seek bar:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ var calculatePercent = function(seekBar, event) {
+     var offsetX = event.pageX - seekBar.offset().left;
+     var seekBarWidth = seekBar.width();
+     var offsetXPercent = offsetX / seekBarWidth;
+     offsetXPercent = Math.max(0, offsetXPercent);
+     offsetXPercent = Math.min(1, offsetXPercent);
+     return offsetXPercent;
+ };
+
+ return {
+     templateUrl: '/templates/directives/seek_bar.html',
+     replace: true,
+     restrict: 'E',
+     scope: { },
+     link: function(scope, element, attributes) {
+         scope.value = 0;
+         scope.max = 100;
+
+         var seekBar = $(element);
+
+         var percentString = function () {
+             var value = scope.value;
+             var max = scope.max;
+             var percent = value / max * 100;
+             return percent + "%";
+         };
+
+         scope.fillStyle = function() {
+             return {width: percentString()};
+         };
+
+         scope.onClickSeekBar = function(event) {
+             var percent = calculatePercent(seekBar, event);
+             scope.value = percent * scope.max;
+         };
+     }
+ ...
+ ```
+#### Attribute / Method	Description
+1. calculatePercent()	Calculates the horizontal percent along the seek bar where the event (passed in from the view as  $event) occurred.
+1. seekBar	Holds the element that matches the directive (<seek-bar>) as a jQuery object so we can call jQuery methods on it.
+1. scope.onClickSeekBar()	Updates the seek bar value based on the seek bar's width and the location of the user's click on the seek bar.
+1. Despite using jQuery, Angular still dictates the style of our code – we declare in the HTML which element should execute scope.onClickSeekBar():
+
+~/bloc/bloc-jams-angular/app/templates/directives/seek_bar.html
+```
+ <div class="seek-bar">
+ <div class="seek-bar" ng-click="onClickSeekBar($event)">
+     <div class="fill" ng-style="fillStyle()"></div>
+     <div class="thumb"></div>
+ </div>
+ ```
+When a user clicks on a point on the seek-bar class element, the function will execute.
+
+Update the Seek Bar from a Mousedown Event
+The second function we need to implement is for when a user drags the seek bar thumb. ng-mousedown is set to trigger the scope.trackThumb function. We'll want that method to bind a new event handler that tracks mouse movements and updates the seek bar's value. We'll also want to bind an event handler to a mouse up event so that the seek bar no longer responds to mouse movements after the user has released the mouse.
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ scope.onClickSeekBar = function(event) {
+     var percent = calculatePercent(seekBar, event);
+     scope.value = percent * scope.max;
+ };
+
+ scope.trackThumb = function() {
+     $document.bind('mousemove.thumb', function(event) {
+         var percent = calculatePercent(seekBar, event);
+         scope.$apply(function() {
+             scope.value = percent * scope.max;
+         });
+     });
+ 
+     $document.bind('mouseup.thumb', function() {
+         $document.unbind('mousemove.thumb');
+         $document.unbind('mouseup.thumb');
+     });
+ };
+ ...
+ ```
+#### Attribute / Method	Description
+1. scope.trackThumb()	Similar to scope.onClickSeekBar, but uses $apply to constantly apply the change in value of scope.value as the user drags the seek bar thumb.
+1. With Angular, $document must be injected as a dependency if we want to access the  window.document object. Add it as a dependency to the seekBar directive:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ (function() {
+     function seekBar() {
+     function seekBar($document) {
+         ...
+     }
+
+     angular
+     .module('blocJams')
+    .directive('seekBar', seekBar);
+    .directive('seekBar', ['$document', seekBar]);
+ })();
+ ```
+The scope.trackThumb function should execute when a user interacts with the thumb class element in the view. More specifically, when the event is a mousedown event. Add an ngMousedown directive, which allows us to specify custom behavior on a mousedown event, to trigger the scope.trackThumb function:
+
+~/bloc/bloc-jams-angular/app/templates/directives/seek_bar.html
+```
+ <div class="seek-bar" ng-click="onClickSeekBar($event)">
+     <div class="fill" ng-style="fillStyle()"></div>
+     <div class="thumb"></div>
+     <div class="thumb" ng-mousedown="trackThumb()"></div>
+ </div>
+ ```
+Test the seek bars in the browser. We should be able to slide or click to a new position. Note, however, that the thumb will not change position. We will implement that ability.  
+
+Write a scope.thumbStyle method – similar to scope.fillStyle – that updates the position of the seek bar thumb. Use the ngStyle directive in the view to apply this style to the element.  Remove $apply from the trackThumb method (keep the scope.value = percent * scope.max; part). 
