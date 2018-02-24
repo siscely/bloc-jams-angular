@@ -1840,3 +1840,347 @@ The scope.trackThumb function should execute when a user interacts with the thum
 Test the seek bars in the browser. We should be able to slide or click to a new position. Note, however, that the thumb will not change position. We will implement that ability.  
 
 Write a scope.thumbStyle method – similar to scope.fillStyle – that updates the position of the seek bar thumb. Use the ngStyle directive in the view to apply this style to the element.  Remove $apply from the trackThumb method (keep the scope.value = percent * scope.max; part). 
+
+We can drag and click on the seek bars, but they're not yet functional. When we interact with the seek bars, we need to change the song position and the volume. We'll start by working on the ability to alter the song position.
+
+Create a new Git feature branch for this.
+
+#### Pass Attributes to a Directive
+We'll add scope.value and  scope.max attributes to the directive in the view:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <seek-bar></seek-bar>
+ <seek-bar value="{{ playerBar.songPlayer.currentTime }}" max="{{ playerBar.songPlayer.currentSong.duration }}"></seek-bar>
+ ...
+ ```
+When we declared scope.value and scope.max we gave them default values of 0 and 100, respectively. In the view, however, we've set the value of value to  {{ playerBar.songPlayer.currentTime }} and the value of max to  {{ playerBar.songPlayer.currentSong.duration }}.
+
+The second expression, {{ playerBar.songPlayer.currentSong.duration }}, is one with which we are already familiar. The expression will evaluate to the length of the currently playing song.
+
+The first expression, {{ playerBar.songPlayer.currentTime }}, however, does not yet exist. Update the SongPlayer service with this new attribute:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.currentSong = null;
+ /**
+ * @desc Current playback time (in seconds) of currently playing song
+ * @type {Number}
+ */
+ SongPlayer.currentTime = null;
+ ...
+ ```
+When the page first loads, the timecode will show 'NaN'; this is expected, and we will modify it in the next checkpoint.
+
+If the length of a song is the max value of the seek bar, then the current playback time of the song is the value of the seek bar, which determines the position of the seek bar thumb.
+
+#### "Observe" Attribute Changes
+To monitor the value changes of these attributes in a manner specific to this directive, we have to "observe" them. We can notify the directive of all changes to attribute values by using the $observe method on the Angular attributes object:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ var seekBar = $(element);
+
+ attributes.$observe('value', function(newValue) {
+     scope.value = newValue;
+ });
+ 
+ attributes.$observe('max', function(newValue) {
+     scope.max = newValue;
+ });
+ ...
+ ```
+This code observes the values of the attributes we declare in the HTML by specifying the attribute name in the first argument. When the observed attribute is set or changed, we execute a callback (the second argument) that sets a new scope value (newValue) for the scope.value and scope.max attributes. We use the directive's scope to determine the location of the seek bar thumb, and correspondingly, the playback position of the song.
+
+##### Set the Playback Position of a Song
+One priority in programming is reusability. It saves time (in the form of future programming and planning) when a function or other unit is devised to be broadly usable.
+
+Our seekBar directive is a general tool. Our goal is to design it so that a user can use it in any instance that requires the ability to control the state of something using a seek bar interface. So far, for Bloc Jams, this only includes song position and volume. To maintain the universality of the seek bar as a tool, we don't want to include instance-specific behavior in the directive. Instead, we want to pass in the behavior dynamically.
+
+In other words, we want to specify an external function that the directive will call when the seek bar position changes. In doing so, the directive can remain a general visualization that supports a broad set of use cases.
+
+Add an attribute named on-change that takes an expression to execute when we change the value of the seek bar. In this case, we'll pass it a callback that sets the time of the song to correspond to the value of the seek bar:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <seek-bar value="{{ playerBar.songPlayer.currentTime }}" max="{{ playerBar.songPlayer.currentSong.duration }}"></seek-bar>
+ <seek-bar value="{{ playerBar.songPlayer.currentTime }}" max="{{ playerBar.songPlayer.currentSong.duration }}" on-change="playerBar.songPlayer.setCurrentTime(value)"></seek-bar>
+ ...
+ ```
+Note that value passed into the onChange call is not inherently the same as  scope.value. It is a variable that shares the name. We can (and will, shortly) pass in scope.value as the value that is the argument for this function, but the two are not the same by definition.
+
+The SongPlayer service doesn't yet have a setCurrentTime method, so we'll add it to the service now. Add the method below the SongPlayer.next method:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ /**
+ * @function setCurrentTime
+ * @desc Set current time (in seconds) of currently playing song
+ * @param {Number} time
+ */
+ SongPlayer.setCurrentTime = function(time) {
+     if (currentBuzzObject) {
+         currentBuzzObject.setTime(time);
+     }
+ };
+ ...
+ ```
+The setCurrentTime method checks if there is a current Buzz object, and, if so, uses the Buzz library's setTime method to set the playback position in seconds.
+
+#### Evaluate the on-change Expression
+We want Angular to treat the on-change attribute differently than the value or max attributes. We don't want on-change to act like a number, string, or static object. Instead, we want the directive to evaluate the on-change expression and execute it.
+
+To make sure the directive evaluates the attribute, we'll attach it to the directive's scope, rather than the attributes object. Scoping the attribute allows us the flexibility to specify how we want to handle the value passed to the on-change attribute:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ return {
+     templateUrl: '/templates/directives/seek_bar.html',
+     replace: true,
+     restrict: 'E',
+     scope: { },
+     scope: {
+         onChange: '&'
+     },
+ ...
+ ```
+The & in the isolate scope object is a type of directive scope binding. The three types of directive scope bindings – @, =, and & – allow us to treat the value of the given attribute differently. The & binding type provides a way to execute an expression in the context of the parent scope.
+
+#### Pass Updated value to onChange
+The function we evaluate through onChange may seem like the final piece of the puzzle, but if we use the web inspector to view the value of value, we find that there isn't one!
+
+no value
+Recall the onClickSeekBar and trackThumb methods we created in seekBar.js. We update the value of scope.value and yet we don't see that update reflected on the attribute in the view.
+
+We need to pass the updated value to the onChange attribute. To do so, we'll write a function to call in the onClickSeekBar and trackThumb methods that will send the updated scope.value to the function evaluated by onChange:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ scope.onClickSeekBar = function(event) {
+     var percent = calculatePercent(seekBar, event);
+     scope.value = percent * scope.max;
+     notifyOnChange(scope.value);
+ };
+
+ scope.trackThumb = function() {
+     $document.bind('mousemove.thumb', function(event) {
+         var percent = calculatePercent(seekBar, event);
+         scope.$apply(function() {
+             scope.value = percent * scope.max;
+             notifyOnChange(scope.value);
+         });
+     });
+
+     $document.bind('mouseup.thumb', function() {
+         $document.unbind('mousemove.thumb');
+         $document.unbind('mouseup.thumb');
+     });
+ };
+ ...
+ ```
+We name the function notifyOnChange because its purpose is to notify onChange that  scope.value has changed. Add the function to the directive's logic:
+
+~/bloc/bloc-jams-angular/app/scripts/directives/seekBar.js
+```
+ ...
+ scope.trackThumb = function() {
+     ...
+ };
+
+ var notifyOnChange = function(newValue) {
+     if (typeof scope.onChange === 'function') {
+         scope.onChange({value: newValue});
+     }
+ };
+ ...
+ ```
+This function is short but dense. Let's break it down:
+
+1. We test to make sure that scope.onChange is a function. If a future developer fails to pass a function to the on-change attribute in the HTML, the next line will not be reached, and no error will be thrown.
+1. We pass a full function call to the on-change attribute in the HTML –  scope.onChange() calls the function in the attribute.
+1. The function we pass in the HTML has an argument, value, which isn't defined in the view (remember that it's not the same as scope.value). Using built-in Angular functionality, we specify the value of this argument using hash syntax. Effectively, we're telling Angular to insert the local newValue variable as the  value argument we pass into the SongPlayer.setCurrentTime() function called in the view.
+1. View Bloc Jams in the browser and test the click and mousedown events. The song playback position should update accordingly.
+
+#### Broadcast the Time Change to the Application
+We've added the ability to set the song playback time via the seek bar, but once we've set a song position, the thumb and fill don't update with the progress of the song. We also have yet to address the undefined value of  {{ playerBar.songPlayer.currentTime }} in our seek bar directive.
+
+The SongPlayer service needs to handle updating time as the song progresses. We want to know, in any part of our Angular application, when the time updates. This ensures that regardless of where we reference the time (in this case, we reference it with {{ playerBar.songPlayer.currentTime }}), our application is aware that it is changing on a second-by-second basis.
+
+In Angular, one way to scope a variable to all parts of an application is to use the  $rootScope service. Every Angular application has just one $rootScope, from which all other scopes inherit. Any Angular component, then, can access $rootScope variables, events, and functions.
+
+$rootScope is not to be used lightly, however. Polluting a namespace is not good practice in any context. Only append to the $rootScope if absolutely necessary.
+
+Because $rootScope is a service, we must inject it as a dependency before we can use it:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ (function() {
+     function SongPlayer(Fixtures) {
+     function SongPlayer($rootScope, Fixtures) {
+         ...
+     };
+
+     angular
+         .module('blocJams')
+         .factory('SongPlayer', ['Fixtures', SongPlayer]);
+         .factory('SongPlayer', ['$rootScope', 'Fixtures', SongPlayer]);
+ })();
+ ```
+To update the song's playback progress from anywhere, we'll add a  $rootScope.$apply event in the SongPlayer service. This creates a custom event that other parts of the Angular application can "listen" to. We've dealt with common JavaScript events before, like click, mouseover, and mousedown. This will be our first custom event. Add the $apply to the SongPlayer.setSong method so that it starts "applying" the time update once we know which song to play:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ var setSong = function(song) {
+     if (currentBuzzObject) {
+         currentBuzzObject.stop();
+         SongPlayer.currentSong.playing = null;
+     }
+
+     currentBuzzObject = new buzz.sound(song.audioUrl, {
+         formats: ['mp3'],
+         preload: true
+     });
+
+     currentBuzzObject.bind('timeupdate', function() {
+         $rootScope.$apply(function() {
+             SongPlayer.currentTime = currentBuzzObject.getTime();
+         });
+     });
+
+     SongPlayer.currentSong = song;
+ };
+ ...
+ ```
+The Buzz library's bind() method allows us to attach event handlers to buzz objects.  timeupdate is one of a number of HTML5 audio events we can use with Buzz's  bind() method.
+
+The bind() method adds an event listener to the Buzz sound object – in this case, we listen for a timeupdate event. When the song playback time updates, we execute a callback function. This function sets the value of SongPlayer.currentTime to the current playback time of the current Buzz object using another one of the Buzz library methods: getTime(), which gets the current playback position in seconds. Using  $apply, we apply the time update change to the $rootScope.
+
+Reload the app in the browser. We should now see the seek bar update as the song plays!
+
+The seek bar now updates as a song plays, but the song playback and total time are still represented in seconds, which isn't the way we'd normally view the duration of a song. To solve this, we'll add an Angular filter.
+
+### FILTERS
+Filters format data used in Angular applications. We can use them either directly with an expression in a view, or as an injectable service in the JavaScript logic of other Angular components. Angular has several built-in filters that illustrate the types of intended use cases for filters, like formatting numbers for currency and dates, or strings with a particular capitalization.
+
+Create a new Git feature branch for this feature.
+
+#### Create a timecode Filter
+Like controllers, services, and directives, filters are defined on an Angular module.
+
+Within the scripts directory, create a filters directory. Within the filters directory, create a file named timecode.js and register a timecode filter:
+
+~/bloc/bloc-jams-angular/app/scripts/filters/timecode.js
+```
+ (function() {
+     function timecode() {
+         return function(seconds) {
+             return output;
+         };
+     }
+ 
+     angular
+         .module('blocJams')
+         .filter('timecode', timecode);
+ })();
+ ```
+Filter functions must return another function which takes at least one argument, the input of the filter – in this case, our input is seconds. We'll take the number of seconds (e.g. "61") and convert it to a time-readable format (e.g. "1:01").
+
+Add logic that converts seconds (an integer value) to a formatted time (a string with the format M:SS):
+
+~/bloc/bloc-jams-angular/app/scripts/filters/timecode.js
+```
+ (function() {
+     function timecode() {
+         return function(seconds) {
+             var seconds = Number.parseFloat(seconds);
+             var wholeSeconds = Math.floor(seconds);
+             var minutes = Math.floor(wholeSeconds / 60);
+             var remainingSeconds = wholeSeconds % 60;
+ 
+             var output = minutes + ':';
+ 
+             if (remainingSeconds < 10) {
+                 output += '0';   
+             }
+ 
+             output += remainingSeconds;
+ 
+             return output;
+         };
+     }
+
+     angular
+         .module('blocJams')
+         .filter('timecode', timecode);
+ })();
+ ```
+Note that we've changed the argument from timeInSeconds to just seconds.
+
+Add the timecode.js script source to index.html, as we've done with all the other JavaScript files so far.
+
+#### Use a Filter in an Angular View
+We can use filters directly in a view's HTML with Angular expressions. In the expression, filters are delimited by the vertical pipe character (|), provided after a variable in the view's scope, for example:
+
+{{ exampleVar | exampleFilter }}
+Many filters take optional arguments, which are delimited by a colon (:) that follows the filter name:
+
+{{ exampleVar | exampleFilter:arg }}
+Multiple arguments are possible, and are passed in with repeated colons:
+
+{{ exampleVar | exampleFilter:argOne:argTwo }}
+Use the timecode Filter in The View
+Unlike services, we do not need to inject a filter as a dependency unless we use it within the code of an Angular component, such as a service, directive, or controller. For Bloc Jams, we'll use the filter in the view only, and therefore won't need to inject it as a dependency anywhere.
+
+To use the timecode filter in the view, add a vertical pipe (|) after each expression of time, followed by the name of the filter: timecode. We display time in the song rows for each song, as well as in the player bar for the current and total time of the currently playing song – update all instances in which we display time in the view to use the timecode filter.
+
+For example, in the player bar template, update the current time and total time of the song with the timecode filter by adding the following code:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <div class="current-time">{{ playerBar.songPlayer.currentTime }}</div>
+ <div class="current-time">{{ playerBar.songPlayer.currentTime | timecode }}</div>
+ <div class="total-time">{{ playerBar.songPlayer.currentSong.duration }}</div>
+ <div class="total-time">{{ playerBar.songPlayer.currentSong.duration | timecode }}</div>
+ ...
+ ```
+View Bloc Jams in the browser and play a song to test the filter. The timecode filter should work. Notice that when the view first loads, however, that "NaN:NaN" appears. "NaN" means "not a number". When the view first loads and there is no current Buzz object, there is no time to display. We need to add a statement that checks for this condition.
+
+Add a Condition that Checks for NaN
+Add the following conditional statement to timecode.js:
+
+~/bloc/bloc-jams-angular/app/scripts/filters/timecode.js
+```
+ ...
+ return function(seconds) {
+     var seconds = Number.parseFloat(seconds);
+
+     if (Number.isNaN(seconds)) {
+         return '-:--';
+     }
+
+     var wholeSeconds = Math.floor(seconds);
+     var minutes = Math.floor(wholeSeconds / 60);
+     var remainingSeconds = wholeSeconds % 60;
+
+     var output = minutes + ':';
+
+     if (remainingSeconds < 10) {
+         output += '0';   
+     }
+
+     output += remainingSeconds;
+
+     return output;
+ }
+ ...
+ ```
+If seconds is not a number, then we return "-:--" to the view. Reload Bloc Jams in the browser and view our working filter in action. 
