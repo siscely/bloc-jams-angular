@@ -549,3 +549,992 @@ Use the ngInclude like an element tag at the bottom of the Album view template:
  ...
  ```
 Because the player bar now has its own template, it could be added to any view using  ngInclude. Add the player bar template to the Landing and Collection views to try it out. After we've gotten the player bar to display on multiple views, be sure to remove it from the Landing view – we don't actually want a player bar to display there.
+
+## Controllers
+Controllers control the flow of data in Angular applications and help keep code modularized. Each controller is automatically paired with a scope ($scope) that Angular uses to communicate between the controller and the view, making it possible to define JavaScript code for a particular DOM element.
+
+### When to Use a Controller
+A controller is a JavaScript object created by a constructor function. Controllers contain the "business logic" that apply functions and values to the scope. When Angular instantiates a new Controller object, a child scope is created and made available as an injectable parameter to the Controller's constructor function as  $scope.
+
+We should only use a controller for two things:
+
+1. To initialize the state of the $scope object.
+1. To add behavior to the $scope object.
+1. Do not use controllers to manipulate the DOM. Instead, use directives, which we'll learn more about in a later checkpoint.
+
+### Define a Controller
+Within the scripts directory, create a controllers directory. Within the controllers directory, create a file named LandingCtrl.js and define a controller for the Landing view:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/LandingCtrl.js
+```
+ (function() {
+     function LandingCtrl() {
+     }
+ 
+     angular
+         .module('blocJams')
+         .controller('LandingCtrl', LandingCtrl);
+ })();
+ ```
+The .controller() method has two parameters:
+
+The name of the controller.
+A callback function or an array that injects dependencies, with a callback function as the last item in the array.
+We've named the controller LandingCtrl – the first argument. The second argument is the callback function that executes when the controller is initialized.
+
+Like .config(), we must call .controller() on an Angular module. Note that the  .module() call does not have the second argument, the array of dependencies. Because we've set the dependencies in app.js, we only need to retrieve the already-defined module.
+
+We may inject as many dependencies as our controller requires. In the case of  LandingCtrl, we've injected no dependencies. With dependencies, however, the controller definition would require an array and would look like this example shown in the documentation:
+```
+(function() {
+    function MyCtrl($scope, dep1, dep2) {
+        // controller logic
+    }
+
+    angular
+        .module('myApp')
+        .controller('MyCtrl', [$scope, dep1, dep2, MyCtrl]);
+})();
+```
+The last item in the array must be the callback function that executes when the controller is initialized – in this case, MyCtrl.
+
+### Instantiate a Controller
+Angular registers a new controller object via the ngController directive, which attaches a controller to a DOM element. For example:
+
+<body ng-controller="MyCtrl">
+The ngController directive tells Angular to instantiate the controller named MyCtrl for the <body> element. This directive creates a new scope tied to the controller's  $scope object. When the application loads, Angular will read the HTML, see the  ng-controller="MyCtrl" attribute, and execute the callback to initialize the controller.
+
+With UI-Router, there's another way to register a controller. We can designate a controller for a particular state by adding a controller property to the state configuration. Add the LandingCtrl to the landing state in app.js:
+
+~/bloc/bloc-jams-angular/app/scripts/app.js
+```
+ ...
+ $stateProvider
+     .state('landing', {
+         url: '/',
+         controller: 'LandingCtrl as landing',
+         templateUrl: '/templates/landing.html'
+     });
+ ...
+ ```
+Link to the LandingCtrl.js script source in index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/app.js"></script>
+ <script src="/scripts/controllers/LandingCtrl.js"></script>
+ ...
+ ```
+### Add Logic to a Controller
+To initialize the $scope object, a controller attaches properties to it. Add a heroTitle property to the LandingCtrl:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/LandingCtrl.js
+```
+ ...
+ function LandingCtrl() {
+     this.heroTitle = "Turn the Music Up!";
+ }
+ ...
+ ```
+Using the this keyword adds heroTitle as a property on the LandingCtrl's $scope object. $scope properties contain the model, or data, that the view will present, and are available to the template at the point in the DOM where the controller is registered. The LandingCtrl for Bloc Jams is registered for the landing.html template.
+
+Within this designated template, we can use {{ }} markup to display properties in the view. Use {{ }} to display the hero title in landing.html:
+
+~/bloc/bloc-jams-angular/app/templates/landing.html
+```
+ ...
+ <section class="hero-content">
+     <h1 class="hero-title">Turn the music up!</h1>
+     <h1 class="hero-title">{{ landing.heroTitle }}</h1>
+ </section>
+ ...
+ ```
+The {{ }} are a declarative way of specifying data binding locations in the HTML. Angular automatically updates this text whenever the heroTitle property changes. The landing part of landing.heroTitle comes from the controller as syntax used when the controller was assigned to the template.
+
+What exists between the {{ }} markup is called an Angular expression, which is similar to a JavaScript expression but differs in a few ways. Refer to the AngularJS Developer Guide on expressions to view their differences.
+
+### Create a Controller for the Collection View
+The controller view will show multiple albums in the app's music collection. In the absence of real data representing an entire music collection, we'll use one album as a placeholder and display it multiple times.
+
+We'll need raw album data to work with. Create a fixtures.js file in the scripts directory and add the following code to it:
+```
+var albumPicasso = {
+   title: 'The Colors',
+   artist: 'Pablo Picasso',
+   label: 'Cubism',
+   year: '1881',
+   albumArtUrl: '/assets/images/album_covers/01.png',
+   songs: [
+     { title: 'Blue', duration: '161.71', audioUrl: '/assets/music/blue' },
+     { title: 'Green', duration: '103.96', audioUrl: '/assets/music/green' },
+     { title: 'Red', duration: '268.45', audioUrl: '/assets/music/red' },
+     { title: 'Pink', duration: '153.14', audioUrl: '/assets/music/pink' },
+     { title: 'Magenta', duration: '374.22', audioUrl: '/assets/music/magenta' }
+   ]
+};
+
+var albumMarconi = {
+   title: 'The Telephone',
+   artist: 'Guglielmo Marconi',
+   label: 'EM',
+   year: '1909',
+   albumArtUrl: '/assets/images/album_covers/20.png',
+   songs: [
+     { title: 'Hello, Operator?', duration: '1:01' },
+     { title: 'Ring, ring, ring', duration: '5:01' },
+     { title: 'Fits in your pocket', duration: '3:21' },
+     { title: 'Can you hear me now?', duration: '3:14' },
+     { title: 'Wrong phone number', duration: '2:15' }
+   ]
+};
+```
+Add the script source to index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+ <script src="/scripts/app.js"></script>
+ <script src="/scripts/fixtures.js"></script>
+ ...
+ ```
+Next, create a CollectionCtrl.js file and add a controller for the Collection view:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/CollectionCtrl.js
+```
+ (function() {
+     function CollectionCtrl() {
+     }
+ 
+     angular
+         .module('blocJams')
+         .controller('CollectionCtrl', CollectionCtrl);
+ })();
+ ```
+Register the CollectionCtrl to the collection state in app.js:
+
+~/bloc/bloc-jams-angular/app/scripts/app.js
+```
+ ...
+ .state('collection', {
+     url: '/collection',
+     controller: 'CollectionCtrl as collection',
+     templateUrl: '/templates/collection.html'
+ });
+ ...
+ ```
+And link to the CollectionCtrl.js script source in index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/app.js"></script>
+ <script src="/scripts/controllers/LandingCtrl.js"></script>
+ <script src="/scripts/controllers/CollectionCtrl.js"></script>
+ ...
+ ```
+With jQuery, we would have to select a DOM element, iterate a specified number of times, and append a new album cover thumbnail to the element each iteration.
+
+Instead of using jQuery to append images, bind the data from the albumPicasso object to the Collection template:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/CollectionCtrl.js
+```
+ ...
+ function CollectionCtrl() {
+     this.albums = [];
+     for (var i=0; i < 12; i++) {
+         this.albums.push(angular.copy(albumPicasso));
+     }
+ }
+ ...
+ ```
+angular.copy is one of several global function components on the angular object.
+
+We add an albums property and set its value to an empty array. Within the for loop, we use angular.copy to make copies of albumPicasso and push them to the array.
+
+Access the Data in the Template
+Now that we've bound the album data to the CollectionCtrl, we need to update the Collection template to access the necessary information and display multiple albums. Start by adding an ngRepeat to the template:
+
+~/bloc/bloc-jams-angular/app/templates/collection.html
+```
+ <section class="album-covers container clearfix">
+     <div class="collection-album-container column fourth">
+     <div class="collection-album-container column fourth" ng-repeat="album in collection.albums">
+ ...
+ ```
+Similar to a for..in statement, the ngRepeat directive iterates through a collection. From the AngularJS documentation:
+
+ngRepeat instantiates a template once per item from a collection. Each template instance gets its own scope, where the given loop variable is set to the current collection item, and $index is set to the item index or key.
+
+In this case, the collection is the albums array that we created to hold copies of  albumPicasso. The "album in collection.albums" part of the code is what allows us to access the data from a single item in the collection. Update the Collection template to access the data from the albums property:
+
+~/bloc/bloc-jams-angular/app/templates/collection.html
+```
+ <section class="album-covers container clearfix">
+     <div class="collection-album-container column fourth" ng-repeat="album in collection.albums">
+         <img src="assets/images/album_covers/01.png"/>
+         <img src="{{ album.albumArtUrl }}">
+         <div class="collection-album-info caption">
+             <p>
+                 <a class="album-name" ui-sref="album">The Colors</a>
+                 <a class="album-name" ui-sref="album">{{ album.title }}</a>
+                 <br/>
+                 <a ui-sref="album">Pablo Picasso</a>
+                 <a ui-sref="album">{{ album.artist }}</a>
+                 <br/>
+                 X songs
+                 {{ album.songs.length }} songs
+ ...
+ ```
+With ngRepeat, the <div> with the collection-album-container class will repeat as many times as set by the loop.
+ 
+#### Controllers have a specific role in an application and should not share code or state between each other. Instead, Angular has services for that purpose.
+
+Angular services are objects that can share data and behavior across several components (controllers, directives, filters, even other services) throughout an application. To use a service, we inject it as a dependency for the component that depends on the service.
+
+### Create a Service
+Angular provides some built-in services, but we will often need to create custom services. We register a service in the same way we've learned to register a controller, by calling a function on the application's module.
+
+Within the scripts directory, create a services directory. Within the services directory, create a file named Fixtures.js and register a Fixtures service using the Factory recipe:
+
+~/bloc/bloc-jams-angular/app/scripts/services/Fixtures.js
+```
+ (function() {
+     function Fixtures() {
+         var Fixtures = {};
+         return Fixtures;
+     }
+ 
+     angular
+         .module('blocJams')
+         .factory('Fixtures', Fixtures);
+ })();
+ ```
+This style of factory declaration is based on the Opinionated Angular Styleguide
+
+.factory() designates the use of the Factory recipe. For the Service recipe, we would use .service(), and so on for the other types.
+
+Within the Fixtures function, we declare a variable and set it to an empty object. The factory will return this object and make its properties and methods available to other parts of our Angular application.
+
+Open the scripts/fixtures.js file and copy the two album objects into the  scripts/services/Fixtures.js file:
+
+~/bloc/bloc-jams-angular/app/scripts/services/Fixtures.js
+```
+ ...
+ function Fixtures() {
+     var Fixtures = {};
+
+     var albumPicasso = {
+         title: 'The Colors',
+         artist: 'Pablo Picasso',
+         label: 'Cubism',
+         year: '1881',
+         albumArtUrl: '/assets/images/album_covers/01.png',
+         songs: [
+             { title: 'Blue', duration: '161.71', audioUrl: '/assets/music/blue' },
+             { title: 'Green', duration: '103.96', audioUrl: '/assets/music/green' },
+             { title: 'Red', duration: '268.45', audioUrl: '/assets/music/red' },
+             { title: 'Pink', duration: '153.14', audioUrl: '/assets/music/pink' },
+             { title: 'Magenta', duration: '374.22', audioUrl: '/assets/music/magenta' }
+         ]
+     };
+ 
+     var albumMarconi = {
+         title: 'The Telephone',
+         artist: 'Guglielmo Marconi',
+         label: 'EM',
+         year: '1909',
+         albumArtUrl: '/assets/images/album_covers/20.png',
+         songs: [
+             { title: 'Hello, Operator?', duration: '1:01' },
+             { title: 'Ring, ring, ring', duration: '5:01' },
+             { title: 'Fits in your pocket', duration: '3:21' },
+             { title: 'Can you hear me now?', duration: '3:14' },
+             { title: 'Wrong phone number', duration: '2:15' }
+         ]
+     };
+
+     return Fixtures;
+ }
+ ...
+ ```
+Note that a forward slash (/) has been added to the beginning of each asset URL.
+
+We'll use this service to pull the album data into our application. Delete the  scripts/fixtures.js file. Add a public getAlbum method to the service:
+
+~/bloc/bloc-jams-angular/app/scripts/services/Fixtures.js
+```
+ ...
+ function Fixtures() {
+     var Fixtures = {};
+
+     var albumPicasso = { ... };
+
+     var albumMarconi = { ... };
+
+     Fixtures.getAlbum = function() {
+         return albumPicasso;
+     };
+
+     return Fixtures;
+ }
+ ...
+ ```
+This service is a "Plain Old JavaScript Object" (POJO). Components that inject this service as a dependency can access the public methods of the object – that is, the properties and methods that are returned.
+
+In index.html, remove the source link to scripts/fixtures.js and add one for the  Fixtures service:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/fixtures.js"></script>
+ <script src="/scripts/services/Fixtures.js"></script>
+ ...
+ ```
+Inject a Service
+Inject the custom service into the AlbumCtrl:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/AlbumCtrl.js
+```
+ (function() {
+     function AlbumCtrl() {
+     function AlbumCtrl(Fixtures) {
+         this.albumData = angular.copy(albumPicasso);
+     }
+
+     angular
+         .module('blocJams')
+         .controller('AlbumCtrl', AlbumCtrl);
+         .controller('AlbumCtrl', ['Fixtures', AlbumCtrl]);
+ })();
+ ```
+We add Fixtures to AlbumCtrl's array of dependencies. Once injected, the service is available for use within the controller.
+
+Update AlbumCtrl to use the Fixtures service's getAlbum() method:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/AlbumCtrl.js
+```
+ ...
+ function AlbumCtrl(Fixtures) {
+     this.albumData = angular.copy(albumPicasso);
+     this.albumData = Fixtures.getAlbum();
+ }
+ ...
+ ```
+AlbumCtrl uses Fixtures's getAlbum() method to get the albumPicasso object.
+
+#### Update CollectionCtrl
+At this point you will see an error in the console if you were to visit localhost:3000/collection albumPicasso would be undefined. Inject the Fixture service into CollectionCtrl.
+
+### Create a SongPlayer Service for Bloc Jams
+Within the services directory, create a file named SongPlayer.js and register a  SongPlayer service using the Factory recipe:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ (function() {
+     function SongPlayer() {
+          var SongPlayer = {};
+          return SongPlayer;
+     }
+ 
+     angular
+         .module('blocJams')
+         .factory('SongPlayer', SongPlayer);
+ })();
+ ```
+Like the Fixtures service, within the SongPlayer service we create a variable and set it to an empty object. The service returns this object, making its properties and methods public to the rest of the application.
+
+Add the source link for the SongPlayer service to index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/services/Fixtures.js"></script>
+ <script src="/scripts/services/SongPlayer.js"></script>
+ ...
+ ```
+Since the SongPlayer service will play music, we need to add the Buzz library to our application. Add the Buzz library source to index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.4.2/angular-ui-router.min.js"></script>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/buzz/1.2.0/buzz.min.js"></script>
+ ...
+ ```
+Inject the SongPlayer Service
+To use the service, we need to decide where to inject it as a dependency. We'll play music from the Album view, so inject the service into AlbumCtrl:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/AlbumCtrl.js
+```
+ (function() {
+      function AlbumCtrl(Fixtures) {
+      function AlbumCtrl(Fixtures, SongPlayer) {
+         this.albumData = Fixtures.getAlbum();
+         this.songPlayer = SongPlayer;
+     }
+
+     angular
+         .module('blocJams')
+         .controller('AlbumCtrl', ['Fixtures', AlbumCtrl]);
+         .controller('AlbumCtrl', ['Fixtures', 'SongPlayer', AlbumCtrl]);
+ })();
+ ```
+The songPlayer property holds the service and makes the service accessible within the Album view.
+
+Add a play Method
+With the current state of the Album view, we can view a play button when we hover over a song row. Let's add a play method to the SongPlayer service so that we can play a song:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ function SongPlayer() {
+     var SongPlayer = {};
+
+     SongPlayer.play = function(song) {
+         var currentBuzzObject = new buzz.sound(song.audioUrl, {
+             formats: ['mp3'],
+             preload: true
+         });
+ 
+         currentBuzzObject.play();    
+     };
+
+     return SongPlayer;
+ }
+ ...
+ ```
+The play method takes an argument, song, which we'll get from the Album view when a user clicks the play button; the ngRepeat directive used in the Album view template will dictate which song to pass into the function. The play method creates a new Buzz object using the song's audioUrl property and then calls Buzz's own  play method on the object.
+
+To trigger the play method, however, we need to add an ngClick directive to the play button anchor tag in album.html:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+ ...
+ <a class="album-song-button" ng-show="hovered && !playing"><span class="ion-play"></span></a>
+ <a class="album-song-button" ng-show="hovered && !playing" ng-click="album.songPlayer.play(song)"><span class="ion-play"></span></a>
+ ...
+ ```
+album.songPlayer.play(song) may seem verbose, but it's not. Let's break it down:
+
+##### Object/Property	Description
+album	Refers to the controller. We use "controller as" syntax:  AlbumCtrl as album in our config block in app.js.
+.songPlayer	A property on the album object:  this.songPlayer = SongPlayer;, where this refers to the controller.
+.play(song)	A method returned by the SongPlayer service, which we've injected and made available to AlbumCtrl.
+View Bloc Jams locally and click to play a song. We can't pause a song yet, so refresh the page to stop the music.
+
+### Refactor the play Method
+To implement playing and pausing of music using the SongPlayer service, we'll use the ngClick directive in the view to tell Angular what to do when a user interacts with certain elements, such as play and pause buttons.
+
+With our current play method, we could play all the songs on the album simultaneously, but that's not the expected behavior of a music player. We need better logic if we want users to have a good experience.
+
+Update the play method with a condition that checks if the currently playing song is not equal to the song the user clicks on:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ function SongPlayer() {
+     var SongPlayer = {};
+
+     var currentSong = null;
+     var currentBuzzObject = null;
+
+     SongPlayer.play = function(song) {
+         if (currentSong !== song) {
+             if (currentBuzzObject) {
+                 currentBuzzObject.stop();
+             }
+
+             var currentBuzzObject = new buzz.sound(song.audioUrl, {
+             currentBuzzObject = new buzz.sound(song.audioUrl, {
+                 formats: ['mp3'],
+                 preload: true
+             });
+
+             currentSong = song;
+
+             currentBuzzObject.play();
+         }   
+     };
+
+     return SongPlayer;
+ }
+ ...
+ ```
+First, we declare new variables named currentSong and currentBuzzObject and set their values to null. We've removed the currentBuzzObject variable declaration from the local scope of the play method because we anticipate needing to access this variable elsewhere in the service.
+
+If the currently playing song is not the same as the song the user clicks on, then we want to:
+
+1. Stop the currently playing song, if there is one.
+1. Set a new Buzz sound object.
+1. Set the newly chosen song object as the currentSong.
+1. Play the new Buzz sound object.
+1. Next, add a second conditional statement that checks if currentSong is equal to  song:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.play = function(song) {
+     if (currentSong !== song) {
+         ...
+     }
+     } else if (currentSong === song) {
+         if (currentBuzzObject.isPaused()) {
+             currentBuzzObject.play();
+             song.playing = true;
+         }
+     }              
+ };
+ ...
+ ```
+If the user can trigger the play method on a song that is already set as the  currentSong, then the assumption is that the song must be paused. The conditional statement if (currentBuzzObject.isPaused()) is a check to make sure our assumption is correct.
+
+##### Revisit Wishful Coding
+Before we can implement a pause method, we need to go back to the "wishful coding" we wrote in album.html earlier in the project, specifically the expressions for the ngShow directive:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+<td class="song-item-number">
+    <span ng-show="!hovered && !playing">{{ $index + 1 }}</span>
+    <a class="album-song-button" ng-show="hovered && !playing" ng-click="album.songPlayer.play(song)"><span class="ion-play"></span></a>
+    <a class="album-song-button" ng-show="playing"><span class="ion-pause"></span></a>
+</td>
+```
+We used a variable named playing that we hadn't yet implemented, but was intended to reflect whether or not a song is playing. We'll maintain this idea, though we'll set playing to be a property on the song object and track the state of the song that way. Replace the three instances of playing in album.html (as shown above) with song.playing.
+
+In our SongPlayer service, every time we play, pause, or stop a song, we'll need to update this boolean. Add the following to the play method:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.play = function(song) {
+     if (currentSong !== song) {
+         if (currentBuzzObject) {
+             currentBuzzObject.stop();
+             currentSong.playing = null;
+         }
+
+         currentBuzzObject = new buzz.sound(song.audioUrl, {
+             formats: ['mp3'],
+             preload: true
+         });
+
+         currentSong = song;
+
+         currentBuzzObject.play();
+         song.playing = true;
+     }
+ ...
+ ```
+When we click to play a song, we should now see the pause button.
+
+##### Write a pause Method
+Now that we can actually see the pause button, let's implement the method to call when a user clicks on it:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.play = function(song) {
+     ...            
+ };
+
+ SongPlayer.pause = function(song) {
+     currentBuzzObject.pause();
+     song.playing = false;
+ };
+ ...
+ ```
+The pause method requires less logic because we don't need to check for various conditions – a song must already be playing before the user can trigger it.
+
+Add an ngClick directive to the pause button anchor tag in album.html:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+ ...
+ <a class="album-song-button" ng-show="song.playing"><span class="ion-pause"></span></a>
+ <a class="album-song-button" ng-show="song.playing" ng-click="album.songPlayer.pause(song)"><span class="ion-pause"></span></a>
+ ...
+ ```
+Open Bloc Jams and test the play and pause buttons.
+
+#### Refactor
+We can play and pause songs without issue now, though we should refactor some parts of our code to make it reusable. Let's look at our new play method.
+
+We'll extract parts of the code from the play method and create a setSong function to handle them:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ var setSong = function(song) {
+    if (currentBuzzObject) {
+        currentBuzzObject.stop();
+        currentSong.playing = null;
+    }
+ 
+    currentBuzzObject = new buzz.sound(song.audioUrl, {
+        formats: ['mp3'],
+        preload: true
+    });
+ 
+    currentSong = song;
+ };
+
+ SongPlayer.play = function(song) {
+     if (currentSong !== song) {
+         if (currentBuzzObject) {
+             currentBuzzObject.stop();
+             currentSong.playing = null;
+         }
+ 
+         currentBuzzObject = new buzz.sound(song.audioUrl, {
+             formats: ['mp3'],
+             preload: true
+         });
+ 
+         currentSong = song;
+         setSong(song);
+         currentBuzzObject.play();
+         song.playing = true;
+     } else if (currentSong === song) {
+         if (currentBuzzObject.isPaused()) {
+             currentBuzzObject.play();
+         }
+     }
+ };
+ ...
+ ```
+##### Documentation
+Our SongPlayer service should now contain:
+
+1. two private attributes: currentSong and currentBuzzObject,
+1. one private function: setSong,
+1. and two public methods: SongPlayer.play and SongPlayer.pause.
+1. As the logic of the service grows, it's important to write good documentation for our own benefit as well as the benefit of other developers.
+
+We'll continue to group our service logic into four groups and maintain them in this order:
+
+1. private attributes
+1. private functions
+1. public attributes
+1. public methods
+1. We will also provide more details for each attribute or function. For example, add the following documentation for the setSong function:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ /**
+ * @function setSong
+ * @desc Stops currently playing song and loads new audio file as currentBuzzObject
+ * @param {Object} song
+ */
+ var setSong = function(song) {
+     ...
+ };
+ ...
+ ```
+We place the documentation immediately before the function and provide:
+
+@function: Name of the function
+@desc: A short description
+@param: A list of parameters and their type
+If a function does not have a parameter, then we exclude that line.
+
+If a function returns something, such as a number, then we would include a fourth line:
+
+* @returns {Number}
+For attributes, we include two lines of information:
+
+@desc: A short description
+@type: The type, such as {Object}, {Array}, {Number}, etc.
+Add the following documentation for currentBuzzObject:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ /**
+ * @desc Buzz object audio file
+ * @type {Object}
+ */
+ var currentBuzzObject = null;
+ ...
+ ```
+ 
+ We can play and pause songs from the song rows in the Album view, but what about the player bar? The player bar is a separate entity from the Album view, so we'll create a controller for it.
+
+Create a new Git feature branch for this checkpoint. 
+
+### Create a Controller for the Player Bar
+Create a new file for the PlayerBarCtrl and inject both the Fixtures and SongPlayer services into the controller:
+
+~/bloc/bloc-jams-angular/app/scripts/controllers/PlayerBarCtrl.js
+```
+ (function() {
+     function PlayerBarCtrl(Fixtures, SongPlayer) {
+         this.albumData = Fixtures.getAlbum();
+         this.songPlayer = SongPlayer;
+     }
+ 
+     angular
+         .module('blocJams')
+         .controller('PlayerBarCtrl', ['Fixtures', 'SongPlayer', PlayerBarCtrl]);
+ })();
+ ```
+Add the source file to index.html:
+
+~/bloc/bloc-jams-angular/app/index.html
+```
+ ...
+ <script src="/scripts/controllers/AlbumCtrl.js"></script>
+ <script src="/scripts/controllers/PlayerBarCtrl.js"></script>
+ ...
+ ```
+Lastly, register PlayerBarCtrl for the player bar template:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ <section class="player-bar">
+ <section class="player-bar" ng-controller="PlayerBarCtrl as playerBar">
+ ...
+ ```
+We use "controller as" syntax to stay consistent with our other controllers.
+
+### Update the Template
+We'll also need to update the template to clearly declare the play and pause buttons of the player bar in the view:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <a class="play-pause">
+     <span class="ion-play"></span>
+     <span class="ion-play"
+           ng-show="!song.playing"
+           ng-click="playerBar.songPlayer.play(song)">
+     </span>
+     <span class="ion-pause"
+           ng-show="song.playing"
+           ng-click="playerBar.songPlayer.pause(song)">
+     </span>
+ </a>
+ ...
+ ```
+We no longer use jQuery to determine which element is visible. Instead, we include both buttons in the view and use the ngShow directive to tell Angular when one button or the other should display. We also include ngClick to trigger the play and pause functions.
+
+When we test this, however, we receive an error in the console. From this error we learn that song is undefined within PlayerBarCtrl. The scope of PlayerBarCtrl is different from AlbumCtrl and does not have access to the song object.
+
+### Make currentSong Public
+The player bar is different from the Album view in that it doesn't need to know the state of individual songs because it will only be able to affect one song at a time: the currently playing song. To access the information of the currently playing song in the player bar, we'll need to do two things.
+
+The first is to change the private attribute currentSong into a public attribute named  SongPlayer.currentSong so that we can use it within the player bar:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ /**
+ * @desc Active song object from list of songs
+ * @type {Object}
+ */
+ var currentSong = null;
+ SongPlayer.currentSong = null;
+ ...
+ ```
+Now that the attribute is public, move it below playSong and above  SongPlayer.play to maintain organization of private and public attributes/functions.
+
+Update all instances of currentSong to SongPlayer.currentSong. (Find and replace is the quickest way to accomplish this task.)
+
+In the player bar template, update the ngShow expression to reflect this change:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <a class="play-pause">
+     <span class="ion-play"
+           ng-show="!song.playing"
+           ng-show="!playerBar.songPlayer.currentSong.playing"
+           ng-click="playerBar.songPlayer.play(song)">
+     </span>
+     <span class="ion-pause"
+           ng-show="song.playing"
+           ng-show="playerBar.songPlayer.currentSong.playing"
+           ng-click="playerBar.songPlayer.pause(song)">
+     </span>
+ </a>
+ ...
+ ```
+If we play and pause a song from the song row, we see that the play and pause buttons in the player bar display correctly. When we try to pause a song from the player bar, however, we get an error in the console. The error tells us the same thing as the previous error message – song is undefined within PlayerBarCtrl. We cannot pass song as an argument into the play and pause methods from the player bar.
+
+### Update the play and pause Methods
+While we still can't access the song object, that's okay. We've already figured out that we don't need to have access to song in the player bar. We only need to know the currently playing song, which we can access via the service. The second step to make the player bar work is to update play and pause to account for the fact that the player bar can't pass song as an argument.
+
+Add the following lines to the play and pause methods:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ /**
+ * @function play
+ * @desc Play current or new song
+ * @param {Object} song
+ */
+ SongPlayer.play = function(song) {
+     song = song || SongPlayer.currentSong;
+     if (SongPlayer.currentSong !== song) {
+         setSong(song);
+         playSong(song);
+     } else if (SongPlayer.currentSong === song) {
+         if (currentBuzzObject.isPaused()) {
+             playSong(song);
+         }
+    }
+ };
+ /**
+ * @function pause
+ * @desc Pause current song
+ * @param {Object} song
+ */
+ SongPlayer.pause = function(song) {
+     song = song || SongPlayer.currentSong;
+     currentBuzzObject.pause();
+     song.playing = false;
+ };
+ ```
+We use || to tell the function: assign (1) the value of song or (2) the value of  SongPlayer.currentSong to the song variable. The first condition occurs when we call the methods from the Album view's song rows, and the second condition occurs when we call the methods from the player bar.
+
+Lastly, update the player bar template to remove song as an argument:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <a class="play-pause">
+     <span class="ion-play"
+           ng-show="!playerBar.songPlayer.currentSong.playing"
+           ng-click="playerBar.songPlayer.play(song)">
+           ng-click="playerBar.songPlayer.play()">
+     </span>
+     <span class="ion-pause"
+           ng-show="playerBar.songPlayer.currentSong.playing"
+           ng-click="playerBar.songPlayer.pause(song)">
+           ng-click="playerBar.songPlayer.pause()">
+     </span>
+ </a>
+ ...
+ ```
+Test the ability to play and pause from the player bar – it should work now!
+
+#### Next and Previous Buttons
+Being able to play and pause from the player bar is one victory; now we'll work on implementing the ability to move between songs with the next and previous buttons.
+
+#### Access songs from the Current Album
+To move between songs, we need to know the index of the song object within the  songs array. To access the songs array, we need to store the album information.
+
+Inject the Fixtures service into the SongPlayer service. Then use the getAlbum method to store the album information:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ function SongPlayer() {
+ function SongPlayer(Fixtures) {
+     var SongPlayer = {};
+
+     var currentAlbum = Fixtures.getAlbum();
+ ...
+ ```
+Remember to write documentation for this private attribute.
+
+Remember to include the Fixtures factory at the bottom of the file as well:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+...
+ angular
+    .module('blocJams')
+     .factory('SongPlayer', SongPlayer);
+     .factory('SongPlayer', ['Fixtures', SongPlayer]);
+...
+```
+Now that we can access the album, we can write a function to get the index of a song. Write a getSongIndex function:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ var getSongIndex = function(song) {
+     return currentAlbum.songs.indexOf(song);
+ };
+
+/**
+* @desc Active song object from list of songs
+* @type {Object}
+*/
+SongPlayer.currentSong = null;
+ ...
+ ```
+Add documentation for this private function.
+
+Write a previous Method
+Armed with the ability to get a song's index, we'll write a method to go to the previous song:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.pause = function(song) {
+     ...
+ };
+
+ SongPlayer.previous = function() {
+     var currentSongIndex = getSongIndex(SongPlayer.currentSong);
+     currentSongIndex--;
+ };
+ ...
+ ```
+We use the getSongIndex function to get the index of the currently playing song and then decrease that index by one.
+
+Next, we'll add logic for what should happen if the previous song index is less than zero – that is, what should happen when the user is on the first song and clicks the previous button? There are many possibilities. We'll opt to:
+
+stop the currently playing song, and
+set the value of the currently playing song to the first song.
+Update the previous method with the following conditional statement:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.previous = function() {
+     var currentSongIndex = getSongIndex(SongPlayer.currentSong);
+     currentSongIndex--;
+
+     if (currentSongIndex < 0) {
+         currentBuzzObject.stop();
+         SongPlayer.currentSong.playing = null;
+     }
+ };
+ ...
+ ```
+If the currentSongIndex is not less than zero, then it must be greater than zero. Add an else conditional that moves to the previous song and automatically plays it:
+
+~/bloc/bloc-jams-angular/app/scripts/services/SongPlayer.js
+```
+ ...
+ SongPlayer.previous = function() {
+     var currentSongIndex = getSongIndex(SongPlayer.currentSong);
+     currentSongIndex--;
+
+     if (currentSongIndex < 0) {
+         currentBuzzObject.stop();
+         SongPlayer.currentSong.playing = null;
+     }
+     } else {
+         var song = currentAlbum.songs[currentSongIndex];
+         setSong(song);
+         playSong(song);
+     }
+ };
+ ...
+ ```
+To trigger the previous method, add an ngClick directive to the previous button anchor tag in player_bar.html:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ ...
+ <a class="previous">
+ <a class="previous" ng-click="playerBar.songPlayer.previous()">
+ ...
+ ```
+Test the previous button in the view and revel in another victory.
