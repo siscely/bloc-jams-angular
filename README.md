@@ -410,4 +410,142 @@ For example, instead of <a href="album.html">, a link refers to a state name lik
 
 To trigger a state change (display a different view) when using UI-Router, use ui-sref instead of href. For external page links or an internal anchor, continue to use href.
 
+We've established the basic views for Bloc Jams. The song list in the Album view, however, is missing hover behavior. We're also missing a crucial aspect of our application: the player bar.
 
+Consider this jQuery code:
+```
+var $previousButton = $('.main-controls .previous');
+var $nextButton = $('.main-controls .next');
+
+$(document).ready(function() {
+    setCurrentAlbum(albumPicasso);
+    $previousButton.click(previousSong);
+    $nextButton.click(nextSong);
+});
+```
+This code designates what should happen when a user clicks the $previousButton and $nextButton objects. The DOM elements are identified in the JavaScript. Angular, on the other hand, declares this code in the HTML:
+```
+<div class="main-controls">
+    <a class="previous" ng-click="previousSong()">
+        <span class="ion-skip-backward"></span>
+    </a>
+    <a class="next" ng-click="nextSong()">
+        <span class="ion-skip-forward"></span>
+    </a>
+</div>
+```
+The functions previousSong and nextSong exist in the JavaScript, but Angular's  ng-click syntax more clearly shows the elements that trigger some action when a user interacts with the application.
+
+### ngClick and ngShow Directives
+The section above shows a use case for the ngClick directive. It is Angular's declarative equivalent of jQuery's .click() method.
+
+Similarly, the ngShow directive is Angular's declarative equivalent of jQuery's  .show() method. (Angular has an inverse of ngShow named ngHide.) From the documentation:
+
+The ngShow directive shows or hides the given HTML element based on the expression provided to the ngShow attribute. The element is shown or hidden by removing or adding the .ng-hide CSS class onto the element. The .ng-hide CSS class is predefined in AngularJS and sets the display style to none (using an !important flag).
+
+Here is an ngShow example from the Angular documentation:
+
+```
+<!-- when $scope.myValue is truthy (element is visible) -->
+<div ng-show="myValue"></div>
+
+<!-- when $scope.myValue is falsy (element is hidden) -->
+<div ng-show="myValue" class="ng-hide"></div>
+Refer to the MDN documentation for a refresher on truthy and falsy.
+
+Update the Album View Template
+Instead of using jQuery's imperative view manipulation to create onHover and  offHover functions (as shown here), we'll declare this functionality in the view using Angular's ngShow directive.
+
+Before we can add this declarative code, however, we need to decide what to show and when to show it:
+
+What to Show	When to Show It
+1. Song number	When the song is not playing and the mouse is off hover
+1. Play button	When the song is not playing and the mouse is on hover
+1. Pause button	When the song is playing
+When a user first visits the Album view, each song row should display the song's number. When a user hovers over a song row, the song number should change to a play button if the song is not already playing. When a user clicks the play button, it should change to a pause button.
+
+Using ngShow, we'll write some "wishful coding" with variables that we haven't yet declared. Update album.html with the following changes:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+ ...
+ <td class="song-item-number">1</td>
+ <td class="song-item-number">
+     <span ng-show="!playing && !hovered">1</span>
+     <a class="album-song-button" ng-show="!playing && hovered"><span class="ion-play"></span></a>
+     <a class="album-song-button" ng-show="playing"><span class="ion-pause"></span></a>
+ </td>
+ ...
+ ```
+We can incorporate the hovered variable using the straightforward ngMouseover and  ngMouseleave directives. Add these directives to the table row:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+ ...
+ <tr class="album-view-song-item">
+ <tr class="album-view-song-item" ng-mouseover="hovered = true" ng-mouseleave="hovered = false">
+ ...
+ ```
+Both directives evaluate an expression. In this case, we assign the hovered variable a value of true or false.
+
+At this stage, we should be able to see the play button appear on mouseover. We'll be able to display the pause button once we start to work on playing music in a later checkpoint.
+
+### Create a Template for the Player Bar
+We'll use Angular to create a player bar template and include it in the Album view. For the time being, the player bar controls will not work – we'll implement the player bar functionality using Angular in a later checkpoint.
+
+### Create a file named player_bar.html in the app/templates directory. Copy the player bar markup from bloc-jams/album.html and paste it into the new file:
+
+~/bloc/bloc-jams-angular/app/templates/player_bar.html
+```
+ <section class="player-bar">
+     <div class="container">
+         <div class="control-group main-controls">
+             <a class="previous">
+                 <span class="ion-skip-backward"></span>
+             </a>
+             <a class="play-pause">
+                 <span class="ion-play"></span>
+             </a>
+             <a class="next">
+                 <span class="ion-skip-forward"></span>
+             </a>
+         </div>
+         <div class="control-group currently-playing">
+             <h2 class="song-name"></h2>
+             <h2 class="artist-song-mobile"></h2>
+             <h3 class="artist-name"></h3>
+             <div class="seek-control">
+                 <div class="seek-bar">
+                     <div class="fill"></div>
+                     <div class="thumb"></div>
+                 </div>
+                 <div class="current-time"></div>
+                 <div class="total-time"></div>
+             </div>
+         </div>
+         <div class="control-group volume">
+             <span class="icon ion-volume-high"></span>
+             <div class="seek-bar">
+                 <div class="fill"></div>
+                 <div class="thumb"></div>
+             </div>
+         </div>
+     </div>
+ </section>
+ ```
+Include the Template in the Album View
+Angular has a directive for including external templates called ngInclude. Like an  <img> tag, ngInclude has an src attribute that defines the path of the asset – in this case, a template.
+
+Use the ngInclude like an element tag at the bottom of the Album view template:
+
+~/bloc/bloc-jams-angular/app/templates/album.html
+```
+ ...
+ <main class="album-view container narrow">
+     ...
+ </main>
+
+ <ng-include src="'/templates/player_bar.html'"></ng-include>
+ ...
+ ```
+Because the player bar now has its own template, it could be added to any view using  ngInclude. Add the player bar template to the Landing and Collection views to try it out. After we've gotten the player bar to display on multiple views, be sure to remove it from the Landing view – we don't actually want a player bar to display there.
